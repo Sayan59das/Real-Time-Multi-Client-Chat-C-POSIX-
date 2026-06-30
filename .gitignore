@@ -1,0 +1,37 @@
+# Compiled binaries
+server
+client
+*.exe
+*.out
+*.elf
+
+# Object files / libraries
+*.o
+*.a
+*.so
+*.dll
+
+# Build folders
+build/
+bin/
+
+# Runtime files, logs, and output
+chat_history.txt
+output/
+*.log
+core
+*.pid
+
+# Credentials / user data
+users.txt
+
+# Editor / IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files and editor temp files
+.DS_Store
+Thumbs.db
+*~
+*.swp
