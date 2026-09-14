@@ -1,9 +1,3 @@
-/*
- * client.c - Chat client
- * Compile: gcc -o client client.c -lpthread
- * Run:     ./client <server_ip> <port>
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,7 +14,6 @@
 static int sockfd;
 static volatile int running = 1;
 
-/* ── receive thread ──────────────────────────────────────── */
 
 static void *recv_thread(void *arg) {
     (void)arg;
@@ -36,13 +29,11 @@ static void *recv_thread(void *arg) {
     return NULL;
 }
 
-/* ── authentication ──────────────────────────────────────── */
 
 static int do_auth(void) {
     char buf[BUFFER_SIZE];
     int  n;
 
-    /* wait for CMD:AUTH */
     n = recv(sockfd, buf, sizeof(buf) - 1, 0);
     if (n <= 0) return 0;
     buf[n] = '\0';
@@ -72,7 +63,6 @@ static int do_auth(void) {
     snprintf(msg, sizeof(msg), "%s %s %s\n", cmd, user, pass);
     send(sockfd, msg, strlen(msg), 0);
 
-    /* read server response */
     n = recv(sockfd, buf, sizeof(buf) - 1, 0);
     if (n <= 0) return 0;
     buf[n] = '\0';
@@ -82,7 +72,6 @@ static int do_auth(void) {
     return strncmp(buf, "OK:", 3) == 0;
 }
 
-/* ── main ────────────────────────────────────────────────── */
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -124,7 +113,7 @@ int main(int argc, char *argv[]) {
         buf[strcspn(buf, "\r\n")] = '\0';
         if (strlen(buf) == 0) continue;
 
-        /* append newline for server parsing */
+
         char msg[BUFFER_SIZE + 2];
         snprintf(msg, sizeof(msg), "%s\n", buf);
         send(sockfd, msg, strlen(msg), 0);
