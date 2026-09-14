@@ -1,9 +1,3 @@
-/*
- * server.c - Multi-client chat server
- * Compile: gcc -o server server.c -lpthread
- * Run:     ./server <port>
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +25,6 @@ typedef struct {
 static Client  *clients[MAX_CLIENTS];
 static pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* ── helpers ─────────────────────────────────────────────── */
 
 static void timestamp(char *buf, size_t len) {
     time_t t = time(NULL);
@@ -55,7 +48,6 @@ static void send_history(int sockfd) {
     fclose(f);
 }
 
-/* ── client list ─────────────────────────────────────────── */
 
 static void add_client(Client *c) {
     pthread_mutex_lock(&clients_mutex);
@@ -83,7 +75,6 @@ static Client *find_client(const char *username) {
     return NULL;
 }
 
-/* ── broadcast / private ─────────────────────────────────── */
 
 static void broadcast(const char *msg, int exclude_fd) {
     pthread_mutex_lock(&clients_mutex);
@@ -109,10 +100,6 @@ static void send_online_list(int sockfd) {
     send(sockfd, buf, strlen(buf), 0);
 }
 
-/* ── authentication ──────────────────────────────────────── */
-
-/* Returns 1 if username exists with matching password, 0 otherwise.
-   Returns -1 if username exists but password is wrong. */
 static int check_credentials(const char *user, const char *pass) {
     FILE *f = fopen(USERS_FILE, "r");
     if (!f) return 0;
@@ -124,7 +111,7 @@ static int check_credentials(const char *user, const char *pass) {
         }
     }
     fclose(f);
-    return 0; /* not found */
+    return 0;
 }
 
 static void register_user(const char *user, const char *pass) {
@@ -132,14 +119,12 @@ static void register_user(const char *user, const char *pass) {
     if (f) { fprintf(f, "%s %s\n", user, pass); fclose(f); }
 }
 
-/* Returns 1 on success, 0 on failure */
 static int authenticate(Client *c) {
     char buf[BUFFER_SIZE];
     int  n;
 
-    send(c->sockfd, "CMD:AUTH\n", 9, 0); /* tell client to start auth */
+    send(c->sockfd, "CMD:AUTH\n", 9, 0); 
 
-    /* receive: LOGIN <user> <pass>  or  REGISTER <user> <pass> */
     n = recv(c->sockfd, buf, sizeof(buf) - 1, 0);
     if (n <= 0) return 0;
     buf[n] = '\0';
@@ -165,7 +150,6 @@ static int authenticate(Client *c) {
     if (strcmp(cmd, "LOGIN") == 0) {
         int r = check_credentials(user, pass);
         if (r == 1) {
-            /* check duplicate session */
             pthread_mutex_lock(&clients_mutex);
             Client *dup = find_client(user);
             pthread_mutex_unlock(&clients_mutex);
@@ -187,8 +171,6 @@ static int authenticate(Client *c) {
     send(c->sockfd, "ERR:Unknown command\n", 20, 0);
     return 0;
 }
-
-/* ── command handling ────────────────────────────────────── */
 
 static void handle_command(Client *c, const char *input) {
     char ts[32];
@@ -226,14 +208,13 @@ static void handle_command(Client *c, const char *input) {
         send(c->sockfd, pm, strlen(pm), 0);
 
     } else if (strcmp(input, "/exit") == 0) {
-        /* handled by caller */
 
     } else {
         send(c->sockfd, "ERR:Unknown command. Type /help\n", 32, 0);
     }
 }
 
-/* ── per-client thread ───────────────────────────────────── */
+
 
 static void *client_thread(void *arg) {
     Client *c = (Client *)arg;
@@ -242,7 +223,6 @@ static void *client_thread(void *arg) {
     char    ts[32];
     int     n;
 
-    /* authenticate (up to 3 attempts) */
     int authed = 0;
     for (int attempt = 0; attempt < 3 && !authed; attempt++)
         authed = authenticate(c);
@@ -257,7 +237,6 @@ static void *client_thread(void *arg) {
     c->authenticated = 1;
     add_client(c);
 
-    /* send history then announce */
     send_history(c->sockfd);
 
     timestamp(ts, sizeof(ts));
@@ -266,7 +245,7 @@ static void *client_thread(void *arg) {
     broadcast(buf, c->sockfd);
     save_history(buf);
 
-    /* main receive loop */
+
     while ((n = recv(c->sockfd, buf, sizeof(buf) - 1, 0)) > 0) {
         buf[n] = '\0';
         buf[strcspn(buf, "\r\n")] = '\0';
@@ -281,13 +260,13 @@ static void *client_thread(void *arg) {
             snprintf(msg, sizeof(msg), "[%s] %.31s: %.1900s\n", ts, c->username, buf);
             printf("%s", msg);
             broadcast(msg, c->sockfd);
-            /* echo back to sender */
+
             send(c->sockfd, msg, strlen(msg), 0);
             save_history(msg);
         }
     }
 
-    /* cleanup */
+   
     timestamp(ts, sizeof(ts));
     snprintf(buf, sizeof(buf), "[%s] *** %s left the chat ***\n", ts, c->username);
     printf("%s", buf);
@@ -300,7 +279,6 @@ static void *client_thread(void *arg) {
     return NULL;
 }
 
-/* ── main ────────────────────────────────────────────────── */
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
